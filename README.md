@@ -16,7 +16,9 @@
 
 # Example:
 
-```go
+```
+#!go
+
 package main
 
 import (
@@ -40,3 +42,4 @@ func main() {
         s.BytesToFile("Signature", signature)
 
 }
+```
