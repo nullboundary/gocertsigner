@@ -2,7 +2,7 @@
 	Author  : Noah Shibley, http://socialhardware.net                       
 	Date    : July 8th 2014                                 
 	Version : 0.1                                               
-	Notes   : A cgo layer that uses openssl to produce pkcs7 signatures
+	Notes   : A cgo layer that uses openssl to produce pkcs7 signatures for golang
 	Dependencies:   openssl lib
 
 ***
