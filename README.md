@@ -7,17 +7,16 @@
 
 ***
 # Function List:
-
+```go
 	SignDocument(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (signature []byte, err error) //signs the document producing a pkcs7 signature
 	BytesToFile(fileName string, outBytes []byte) //outputs a slice of bytes to a file
 	FileToBytes(fileName string) []byte //reads in a file to a slice of bytes
-
+```
 ***
 
 # Example:
 
-```
-#!go
+```go
 
 package main
 
