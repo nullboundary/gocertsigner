@@ -3,7 +3,7 @@
 	Date    : July 8th 2014                                 
 	Version : 0.1                                               
 	Notes   : A cgo layer that uses openssl to produce pkcs7 signatures for golang
-	Dependencies:   openssl lib
+	Dependencies:   openssl or libressl: libcrypto
 
 ***
 # Function List:
@@ -22,7 +22,7 @@
 package main
 
 import (
-        s "bitbucket.org/cicadaDev/goCertSigner"
+        s "github.com/slugmobile/gocertsigner"
         "log"
 )
 
