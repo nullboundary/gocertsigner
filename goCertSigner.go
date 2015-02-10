@@ -5,11 +5,12 @@ package goCertSigner
 #cgo windows LDFLAGS: /DEV/openssl-1.0.1e/libcrypto.a -lgdi32
 #cgo windows CFLAGS: -I /DEV/openssl-1.0.1e/include
 
- #include <openssl/pem.h>
  #include <openssl/x509.h>
  #include <openssl/x509v3.h>
  #include <openssl/pkcs12.h>
  #include <openssl/pkcs7.h>
+ #include <openssl/pem.h>
+ #include <openssl/evp.h>
  #include <openssl/err.h>
  #include <openssl/safestack.h>
  #include <stdio.h>
@@ -41,9 +42,9 @@ import (
 
 type KeysAndCerts struct {
 	Password string      //password for the p12 cert
-	scert    *C.X509     //cert from the p12 developer cert
-	skey     *C.EVP_PKEY //key from the p12 developer cert
-	ca       *C.STACK    //stack of certificate authorities. CA from 2 sources, p12 & wwdr
+	scert    *C.X509     //cert from the p12 cert
+	skey     *C.EVP_PKEY //key from the p12 cert
+	ca       *C.STACK    //stack of certificate authorities. CA from 2 sources
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -116,7 +117,6 @@ func BytesToFile(fileName string, outBytes []byte) {
 func parseP12(kc *KeysAndCerts, p12Bytes []byte) {
 
 	var p12 *C.PKCS12
-	kc.ca = C.X509NewNull()
 	kc.scert = nil
 	kc.skey = nil
 	p12 = nil
@@ -132,7 +132,7 @@ func parseP12(kc *KeysAndCerts, p12Bytes []byte) {
 	pass := C.CString(kc.Password)
 	defer C.free(unsafe.Pointer(pass))
 
-	if C.PKCS12_parse(p12, pass, &kc.skey, &kc.scert, &kc.ca) == 0 { //parse pkcs12 into 3 files
+	if C.PKCS12_parse(p12, pass, &kc.skey, &kc.scert, nil) == 0 { //parse pkcs12 into 3 files
 
 		var cstr [256]C.char
 		C.ERR_error_string(C.ERR_peek_error(), &cstr[0])
@@ -148,8 +148,62 @@ func parseP12(kc *KeysAndCerts, p12Bytes []byte) {
 		panic("scert == nil")
 	}
 
-	if kc.ca == nil {
-		panic("ca == nil")
+}
+
+//////////////////////////////////////////////////////////////////////////
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////
+func parseX509Cert(kc *KeysAndCerts, certX509 []byte) {
+
+	kc.scert = nil
+	certBufLen := C.long(len(certX509))
+	certBuf := ((*C.uchar)(unsafe.Pointer(&certX509[0]))) //bytes[] to * unsigned char
+
+	//parse X509 for certificate
+	if C.d2i_X509(&kc.scert, &certBuf, certBufLen) == nil {
+		var cstr [256]C.char
+		C.ERR_error_string(C.ERR_peek_error(), &cstr[0]) //get openssl error code
+		errorStr := C.GoString(&cstr[0])
+		errorStr = "parse Cert Fail:" + errorStr
+		panic(errorStr)
+	}
+	if kc.scert == nil {
+		panic("kc.scert == nil")
+	}
+
+}
+
+//////////////////////////////////////////////////////////////////////////
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////
+func parsePrivateKeyPem(kc *KeysAndCerts, privKeyPem []byte) {
+
+	kc.skey = nil
+
+	pemBufLen := C.int(len(privKeyPem))
+	pemBuf := (unsafe.Pointer(&privKeyPem[0])) //bytes[] to * unsigned char
+
+	//load the data into a BIO buffer
+	privKeyBio := C.BIO_new_mem_buf(pemBuf, pemBufLen)
+	defer C.BIO_free(privKeyBio)
+	if privKeyBio == nil {
+		panic("new openssl pem bio error")
+	}
+
+	pass := C.CString(kc.Password)
+	defer C.free(unsafe.Pointer(pass))
+
+	if C.PEM_read_bio_PrivateKey(privKeyBio, &kc.skey, nil, unsafe.Pointer(pass)) == nil {
+		var cstr [256]C.char
+		C.ERR_error_string(C.ERR_peek_error(), &cstr[0]) //get openssl error code
+		errorStr := C.GoString(&cstr[0])
+		panic(errorStr)
 	}
 
 }
@@ -171,12 +225,10 @@ func addCA(kc *KeysAndCerts, ca []byte) {
 	caBuf := ((*C.uchar)(unsafe.Pointer(&ca[0]))) //bytes[] to * unsigned char
 
 	if C.d2i_X509(&caCert, &caBuf, caBufLen) == nil {
-
 		panic("add CA fail")
 	}
 
 	if caCert == nil {
-
 		panic("caCert == nil")
 	}
 
@@ -202,14 +254,14 @@ func signDoc(kc *KeysAndCerts, document []byte) []byte {
 	documentBuf := (unsafe.Pointer(&document[0])) //bytes[] to * unsigned char
 
 	//load the data into a BIO buffer
-	in := C.BIO_new_mem_buf(documentBuf, documentBufLen)
-	defer C.BIO_free(in)
-	if in == nil {
+	doc := C.BIO_new_mem_buf(documentBuf, documentBufLen)
+	defer C.BIO_free(doc)
+	if doc == nil {
 		panic("new openssl bio error")
 	}
 
 	//sign the data and create a pkcs7
-	p7 := C.PKCS7_sign(kc.scert, kc.skey, kc.ca, in, flags)
+	p7 := C.PKCS7_sign(kc.scert, kc.skey, kc.ca, doc, flags)
 	defer C.PKCS7_free(p7)
 	if p7 == nil {
 		panic("p7 sign error")
@@ -234,7 +286,7 @@ func signDoc(kc *KeysAndCerts, document []byte) []byte {
 //
 //
 //////////////////////////////////////////////////////////////////////////
-func SignDocument(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (signature []byte, err error) {
+func SignWithP12(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (signature []byte, err error) {
 
 	//recover from panics and return error messages
 	defer func() {
@@ -252,8 +304,39 @@ func SignDocument(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (si
 
 	kc.Password = pkcsPass //set the password to open the encrypted pkcs12 cert
 
-	parseP12(&kc, pkcs12)         //parse the p12 into various keys and certificates
 	addCA(&kc, caCert)            //add the intermediate CA certificate
+	parseP12(&kc, pkcs12)         //parse the p12 into various keys and certificates
 	return signDoc(&kc, doc), err //sign the document
+
+}
+
+//////////////////////////////////////////////////////////////////////////
+//
+//
+//
+//
+//////////////////////////////////////////////////////////////////////////
+func SignWithX509PEM(doc []byte, x509Cert []byte, pemKey []byte, keyPass string, caCert []byte) (signature []byte, err error) {
+
+	//recover from panics and return error messages
+	defer func() {
+		if r := recover(); r != nil {
+			var ok bool
+			err, ok = r.(error)
+			if !ok {
+				err = fmt.Errorf("signer: %v", r)
+			}
+		}
+	}()
+
+	var kc KeysAndCerts
+	defer free(&kc) //free the C allocated memory
+
+	kc.Password = keyPass //set the password to open the encrypted pem private key
+
+	addCA(&kc, caCert)              //add the intermediate CA certificate
+	parseX509Cert(&kc, x509Cert)    //parse the x509 Der to get the certificate
+	parsePrivateKeyPem(&kc, pemKey) //parse the pem private key
+	return signDoc(&kc, doc), err   //sign the document
 
 }
