@@ -8,7 +8,10 @@
 ***
 # Function List:
 ```go
-	SignDocument(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (signature []byte, err error) //signs the document producing a pkcs7 signature
+	//signs a document using a p12 cert producing a pkcs7 signature
+	SignWithP12(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (signature []byte, err error) 
+	//signs a document using a x509 der cert with a pem Key producing a pkcs7 signature
+	SignWithX509PEM(doc []byte, x509Cert []byte, pemKey []byte, keyPass string, caCert []byte) (signature []byte, err error)
 	BytesToFile(fileName string, outBytes []byte) //outputs a slice of bytes to a file
 	FileToBytes(fileName string) []byte //reads in a file to a slice of bytes
 ```
@@ -33,7 +36,7 @@ func main() {
         p12pass := "yourCertPassword" 		  //store somewhere safe, not in code. 
         caCert := s.FileToBytes("ca.cer")     //your certificate authority cert
 
-        signature, err := s.SignDocument(doc, p12, p12pass, caCert)
+        signature, err := s.SignWithP12(doc, p12, p12pass, caCert)
         if err != nil {
                 log.Printf("error: %v", err)
         }
