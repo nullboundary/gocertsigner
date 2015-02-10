@@ -1,3 +1,4 @@
+// Package goCertSigner is a cgo layer that uses libcrypto to produce pkcs7 signatures for golang.
 package goCertSigner
 
 /*
@@ -40,6 +41,7 @@ import (
 	"unsafe"
 )
 
+//KeysAndCerts is a struct to store all openssl types and passwords used for signing.
 type KeysAndCerts struct {
 	Password string      //password for the p12 cert
 	scert    *C.X509     //cert from the p12 cert
@@ -47,36 +49,21 @@ type KeysAndCerts struct {
 	ca       *C.STACK    //stack of certificate authorities. CA from 2 sources
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//init is used to setup openssl by adding all ciphers and digests.
 func init() {
 	C.OpenSSL_add_all_ciphers()
 	C.OpenSSL_add_all_digests()
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//free cleans up all openssl certificate and key allocated memory
 func free(kc *KeysAndCerts) {
 	C.X509PopFree(kc.ca)
 	C.X509_free(kc.scert)
 	C.EVP_PKEY_free(kc.skey)
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//FileToBytes is a convience function for loading a file and returning a slice of bytes.
 func FileToBytes(fileName string) []byte {
 
 	//open file
@@ -93,12 +80,7 @@ func FileToBytes(fileName string) []byte {
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//BytesToFile is a convience function for saving a slice of bytes to a file.
 func BytesToFile(fileName string, outBytes []byte) {
 
 	err := ioutil.WriteFile(fileName, outBytes, 0644)
@@ -108,12 +90,8 @@ func BytesToFile(fileName string, outBytes []byte) {
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//parse12 reads the Pkcs12 certificate byte slice and parses it into a
+//openssl *C.X509 certificate type and an openssl *C.EVP_PKEY type.
 func parseP12(kc *KeysAndCerts, p12Bytes []byte) {
 
 	var p12 *C.PKCS12
@@ -150,12 +128,8 @@ func parseP12(kc *KeysAndCerts, p12Bytes []byte) {
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//parseX509Cert reads the X509 der formatted certificate byte slice and parses it into a
+//openssl *C.X509 type.
 func parseX509Cert(kc *KeysAndCerts, certX509 []byte) {
 
 	kc.scert = nil
@@ -176,12 +150,8 @@ func parseX509Cert(kc *KeysAndCerts, certX509 []byte) {
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//parsePrivateKeyPem reads the private key pem byte slice and parses it into a
+//openssl *C.EVP_PKEY type.
 func parsePrivateKeyPem(kc *KeysAndCerts, privKeyPem []byte) {
 
 	kc.skey = nil
@@ -208,12 +178,8 @@ func parsePrivateKeyPem(kc *KeysAndCerts, privKeyPem []byte) {
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//addCA reads the intermediate & CA root certificates and
+//adds them to a X509 cert stack.
 func addCA(kc *KeysAndCerts, ca []byte) {
 	/* Read intermediate & CA root certificates */
 
@@ -240,12 +206,7 @@ func addCA(kc *KeysAndCerts, ca []byte) {
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//signDoc uses the KeysAndCerts struct to create a pkcs7 signature.
 func signDoc(kc *KeysAndCerts, document []byte) []byte {
 
 	flags := C.int(C.PKCS7_DETACHED | C.PKCS7_BINARY)
@@ -280,12 +241,7 @@ func signDoc(kc *KeysAndCerts, document []byte) []byte {
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//SignWithP12 signs a document using a p12 cert producing a pkcs7 signature.
 func SignWithP12(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (signature []byte, err error) {
 
 	//recover from panics and return error messages
@@ -310,12 +266,7 @@ func SignWithP12(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (sig
 
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//
-//
-//////////////////////////////////////////////////////////////////////////
+//SignWithX509PEM signs a document using a x509 der formatted certificate with a pem formatted key producing a pkcs7 signature.
 func SignWithX509PEM(doc []byte, x509Cert []byte, pemKey []byte, keyPass string, caCert []byte) (signature []byte, err error) {
 
 	//recover from panics and return error messages
