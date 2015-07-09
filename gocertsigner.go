@@ -1,5 +1,5 @@
-// Package goCertSigner is a cgo layer that uses libcrypto to produce pkcs7 signatures for golang.
-package goCertSigner
+// Package gocertsigner is a cgo layer that uses libcrypto to produce pkcs7 signatures for golang.
+package gocertsigner
 
 /*
 #cgo !windows LDFLAGS: -lcrypto
