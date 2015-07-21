@@ -8,11 +8,11 @@
 ***
 # Function List:
 ```go
-    //signs a document using a p12 cert producing a pkcs7 signature
-    SignWithP12(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (signature []byte, err error) 
+//signs a document using a p12 cert producing a pkcs7 signature
+SignWithP12(doc []byte, pkcs12 []byte, pkcsPass string, caCert []byte) (signature []byte, err error) 
         
-    //signs a document using a x509 der cert with a pem Key producing a pkcs7 signature
-    SignWithX509PEM(doc []byte, x509Cert []byte, pemKey []byte, keyPass string, caCert []byte) (signature []byte, err error)
+//signs a document using a x509 der cert with a pem Key producing a pkcs7 signature
+SignWithX509PEM(doc []byte, x509Cert []byte, pemKey []byte, keyPass string, caCert []byte) (signature []byte, err error)
 ```
 ***
 
