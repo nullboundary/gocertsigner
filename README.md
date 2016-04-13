@@ -23,7 +23,7 @@ SignWithX509PEM(doc []byte, x509Cert []byte, pemKey []byte, keyPass string, caCe
 package main
 
 import (
-        s "github.com/slugmobile/gocertsigner"
+        s "github.com/nullboundary/gocertsigner"
         "io/ioutil"
         "log"
 )
