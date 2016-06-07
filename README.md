@@ -1,3 +1,5 @@
+ [![Go Report Card](https://goreportcard.com/badge/github.com/nullboundary/gocertsigner)](https://goreportcard.com/report/github.com/nullboundary/gocertsigner)
+ 
     Name    : GoCertSigner Library                      
     Author  : Noah Shibley, http://socialhardware.net                       
     Date    : July 8th 2014                                 
